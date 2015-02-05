@@ -9,6 +9,7 @@ var trumpet = require('trumpet');
 var finalhandler = require('finalhandler');
 
 var workRoot = path.join(__dirname, '..', 'work');
+var cache = {};
 
 var serve = serveStatic(workRoot, {
     etag: false,
@@ -27,8 +28,9 @@ function logerror(err) {
     console.error(err.stack || err.toString());
 }
 
-function log(url, filePath) {
-    console.log(url, '<==', filePath.substring(workRoot.length));
+function log(url, filePath, fromCache) {
+    console.log(url, '<==', filePath.substring(workRoot.length), (fromCache ?
+        ' -- from cache' : ''));
 }
 
 function normalize(p) {
@@ -55,11 +57,19 @@ var server = http.createServer(function (req, res) {
 
     function tryLess() {
         var filePath;
+        var isBaseCss = req.url.indexOf('/assets/css/base.css') === 0;
         if (!req.url.match(/\.css($|\?)/i)) return tryStatic();
         var fileName = req.url.replace(/\.css(\?.*)?$/i, '.less');
         filePath = path.join(workRoot, fileName);
         fse(filePath, function (filePath) {
-            log(req.url, filePath);
+            log(req.url, filePath, isBaseCss && cache.base);
+            if (isBaseCss && cache.base) {
+                res.writeHead(200, {
+                    'Content-Type': 'text/css; charset=utf-8'
+                });
+                res.end(cache.base);
+                return;
+            }
             fs.readFile(filePath, 'utf-8', errto(done, gotLessContent));
         }, tryStatic);
 
@@ -76,6 +86,9 @@ var server = http.createServer(function (req, res) {
                     sourceMapRootpath: '/'
                 }
             }, errto(done, function (output) {
+                if (isBaseCss) {
+                    cache.base = output.css;
+                }
                 res.writeHead(200, {
                     'Content-Type': 'text/css; charset=utf-8'
                 });
