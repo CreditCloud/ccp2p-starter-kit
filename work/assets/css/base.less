@@ -1,6 +1,10 @@
-div {
-    margin:0;
-    p {
-        border:0;
-    }
+@import (inline) "./base/typo.css";
+@import "./base/bootstrap/variables.less";
+@import "./base/font-awesome/variables.less";
+@import "./base/variables.less";
+@import "./base/bootstrap.less";
+@import "./base/font-awesome.less";
+@import (inline) "./base/pure-grids.css";
+.p-g [class *= "p-u"] { /* reset font-family in grids */
+    font-family: @font-family-base;
 }

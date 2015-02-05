@@ -48,8 +48,9 @@ var server = http.createServer(function (req, res) {
     var done = finalhandler(req, res, {
         onerror: logerror
     });
-    
-    if (req.url.indexOf('/assets/') === 0) return tryLess();
+
+    if (req.url.indexOf('/favicon.ico') === 0) return tryStatic();
+    else if (req.url.indexOf('/assets/') === 0) return tryLess();
     else return tryHtml();
 
     function tryLess() {
@@ -82,7 +83,7 @@ var server = http.createServer(function (req, res) {
             }));
         }
     }
-    
+
     function tryStatic() {
         serve(req, res, errto(done, tryHtml));
     }
