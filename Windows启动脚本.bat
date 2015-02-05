@@ -5,9 +5,9 @@ if /i "%PROCESSOR_ARCHITEW6432%"=="AMD64" GOTO AMD64
 if /i "%processor_architecture%"=="x86" GOTO x86
 GOTO ERR
 :AMD64
-    node64.exe server.js
+    static\node64.exe static\server.js
 :x86
-    node.exe server.js
+    static\node.exe static\server.js
 @echo 出错了，可能是 4000 端口已被占用（EADDRINUSE 错误）？
 pause
 GOTO END

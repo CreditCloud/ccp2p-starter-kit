@@ -8,7 +8,7 @@ var serveStatic = require('serve-static');
 var trumpet = require('trumpet');
 var finalhandler = require('finalhandler');
 
-var workRoot = path.join(__dirname, 'work');
+var workRoot = path.join(__dirname, '..', 'work');
 
 var serve = serveStatic(workRoot, {
     etag: false,
@@ -28,7 +28,7 @@ function logerror(err) {
 }
 
 function log(url, filePath) {
-    console.log(url, '<==', filePath.substring(__dirname.length));
+    console.log(url, '<==', filePath.substring(workRoot.length));
 }
 
 function normalize(p) {
