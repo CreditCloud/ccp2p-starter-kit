@@ -8,6 +8,8 @@ GOTO ERR
     node64.exe server.js
 :x86
     node.exe server.js
+@echo 出错了，可能是 4000 端口已被占用（EADDRINUSE 错误）？
+pause
 GOTO END
 :ERR
 @echo 不支持的CPU架构："%processor_architecture%"!
