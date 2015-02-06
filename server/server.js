@@ -33,8 +33,11 @@ function log(url, filePath, fromCache) {
         ' -- from cache' : ''));
 }
 
-function normalize(p) {
-    return p.replace(/\/+/g, '/');
+function normalizeUrl(req) {
+    if (req.url.match(/[?&]nolayout(&|$|=)/)) {
+        req.noLayout = true;
+    }
+    req.url = req.url.replace(/\/+/g, '/').replace(/\?.*$/, '');
 }
 
 function fse(filePath, efn, nefn) {
@@ -46,12 +49,15 @@ function fse(filePath, efn, nefn) {
 
 var server = http.createServer(function (req, res) {
     res.req = req;
-    req.url = normalize(req.url);
+    normalizeUrl(req);
     var done = finalhandler(req, res, {
         onerror: logerror
     });
 
-    if (req.url.indexOf('/favicon.ico') === 0) return tryStatic();
+    if (req.url.indexOf('/favicon.ico') === 0) {
+        req.url = '/assets/favicon.ico';
+        return tryStatic();
+    }
     else if (req.url.indexOf('/assets/') === 0) return tryLess();
     else return tryHtml();
 
@@ -98,7 +104,7 @@ var server = http.createServer(function (req, res) {
     }
 
     function tryStatic() {
-        serve(req, res, errto(done, tryHtml));
+        serve(req, res, errto(done, done));
     }
 
     function tryHtml() {
@@ -111,15 +117,17 @@ var server = http.createServer(function (req, res) {
             res.writeHead(200, {
                 'Content-Type': 'text/html; charset=utf-8'
             });
+            if (req.noLayout) return responseNoLayout();
             fse(path.join(workRoot, '_layout.html'), function (layoutFilePath) {
                 var tr = trumpet();
                 fs.createReadStream(layoutFilePath).pipe(tr);
                 fs.createReadStream(filePath).pipe(
                     tr.select('div#main-container').createWriteStream());
                 tr.pipe(res);
-            }, function () {
+            }, responseNoLayout);
+            function responseNoLayout() {
                 fs.createReadStream(filePath).pipe(res);
-            })
+            }
         }
     }
 });
