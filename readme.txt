@@ -29,6 +29,11 @@ HTML 文件扩展名用 `.html` 而不用 `.htm`，对应访问的路径如 `htt
 
 页面内链接做成可点击的以 `/` 开头的绝对路径。
 
+mediaqueries 在 IE8 下的处理
+----------------------------
+
+一般不需要做 responsive 设计，但是 Bootstrap 和 Pure.css 框架会有一些使用 mediaquery 的代码。为了在 IE8 下表现正常，我们的处理方式是根据 user-agent 判断，对 IE8 响应的 css 按照宽度为 1024px 的规则自动地去掉 @media 规则区块。
+
 javascript
 ----------
 
