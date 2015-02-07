@@ -2,6 +2,7 @@
 var http = require('http');
 var path = require('path');
 var fs = require('fs');
+var co = require('co');
 var less = require('less');
 var errto = require('errto');
 var serveStatic = require('serve-static');
@@ -75,72 +76,102 @@ function fse(filePath, efn, nefn) {
     });
 }
 
-var server = http.createServer(function (req, res) {
-    res.req = req;
-    normalizeUrl(req);
-    var done = finalhandler(req, res, {
-        onerror: logerror
+function exists(filePath) {
+    return new Promise(function (resolve) {
+        fs.exists(filePath, resolve);
     });
+}
+
+function firstExists(filePaths) {
+    return co.wrap(function * (filePaths) {
+        var filePath;
+        while ((filePath = filePaths.shift())) {
+            if (yield exists(filePath)) return filePath;
+        }
+        return false;
+    })((Array.isArray(filePaths) ?
+            filePaths : Array.prototype.slice.call(arguments))
+        .filter(function (
+            filePath) {
+            return filePath && typeof filePath === 'string';
+        }));
+}
+
+function readFile(filePath) {
+    return co(function * () {
+        return yield fs.readFile.bind(fs, filePath, 'utf-8');
+    });
+}
+
+function renderLess(filePath) {
+    return co(function * () {
+        var content = yield readFile(filePath);
+        var output = yield less.render.bind(less, content, {
+            filename: filePath,
+            relativeUrls: true,
+            paths: [path.dirname(filePath)],
+            sourceMap: {
+                sourceMapFileInline: true,
+                outputSourceFiles: true,
+                sourceMapInputFilename: path.basename(filePath),
+                sourceMapBasepath: workRoot,
+                sourceMapRootpath: '/'
+            }
+        });
+        return output.css;
+    });
+}
+
+var server = http.createServer(function (req, res) {
+    normalizeUrl(req);
     res.log = {
         url: req.url
     };
     res.on('finish', function () {
         logres(res.log);
     })
+    var done = finalhandler(req, res, {
+        onerror: logerror
+    });
+    co(route).then(done.bind(null, null)).catch(done);
 
-    if (req.url.indexOf('/favicon.ico') === 0) {
-        req.url = '/assets/favicon.ico';
-        return tryStatic();
-    }
-    if (req.url.indexOf('/assets/') === 0) {
-        if (!req.url.match(/\.css$/i)) return tryStatic();
-        return tryLess();
-    }
-    return tryHtml();
-
-    function tryLess() {
-        var filePath;
-        var isBaseCss = req.url.indexOf('/assets/css/base.css') === 0;
-        filePath = path.join(workRoot, req.url.replace(/\.css$/i, '.less'));
-        fse(filePath, function (filePath) {
-            res.log.filePath = filePath;
-            if (isBaseCss && cache.base) {
-                res.log.fromCache = true;
-                return respondCss(cache.base);
-            }
-            fs.readFile(filePath, 'utf-8', errto(done, gotLessContent));
-        }, tryCss);
-
-        function gotLessContent(content) {
-            less.render(content, {
-                filename: filePath,
-                relativeUrls: true,
-                paths: [path.dirname(filePath)],
-                sourceMap: {
-                    sourceMapFileInline: true,
-                    outputSourceFiles: true,
-                    sourceMapInputFilename: path.basename(filePath),
-                    sourceMapBasepath: workRoot,
-                    sourceMapRootpath: '/'
-                }
-            }, errto(done, function (output) {
-                if (isBaseCss) {
-                    cache.base = output.css;
-                }
-                respondCss(output.css);
-            }));
+    function * route() {
+        if (req.url.indexOf('/favicon.ico') === 0) {
+            req.url = '/assets/favicon.ico';
+            return co(tryStatic)
         }
+        if (req.url.indexOf('/assets/') === 0) {
+            if (!req.url.match(/\.css$/i)) return co(tryStatic);
+            return co(tryLessAndCss);
+        }
+        return co(tryHtml);
     }
 
-    function tryCss() {
-        var filePath = path.join(workRoot, req.url);
-        fse(filePath, function (filePath) {
-            res.log.filePath = filePath;
-            fs.readFile(filePath, 'utf-8', errto(done, respondCss));
-        }, tryStatic);
+    function * tryLessAndCss() {
+        var isBaseCss = req.url.indexOf('/assets/css/base.css') === 0;
+        var filePaths = [
+            path.join(workRoot, req.url.replace(/\.css$/i, '.less')),
+            path.join(workRoot, req.url)
+        ];
+        if (isBaseCss && cache.base) {
+            res.log.fromCache = true;
+            res.log.filePath = filePaths[0];
+            return respondCss(cache.base);
+        }
+        var filePath = yield firstExists(filePaths);
+        if (!filePath) return co(tryStatic);
+        res.log.filePath = filePath;
+        var content;
+        if (filePath.match(/\.less$/i)) {
+            content = yield renderLess(filePath);
+            if (isBaseCss) cache.base = content;
+        } else {
+            content = yield readFile(filePath);
+        }
+        return respondCss(content);
     }
 
-    function respondCss(content, fileName) {
+    function respondCss(content) {
         var ua = useragent.parse(req.headers['user-agent']);
         if (ua.family === 'IE' && ua.major < 9) {
             res.log.noMediaQueries = true
@@ -152,34 +183,34 @@ var server = http.createServer(function (req, res) {
         res.end(content);
     }
 
-    function tryStatic() {
-        serve(req, res, errto(done, done));
+    function * tryStatic() {
+        yield serve.bind(null, req, res);
     }
 
-    function tryHtml() {
-        var filePath = path.join(workRoot, req.url.replace(/\.html$/i, ''));
-        fse(filePath + '.html', gotHtmlPath,
-            fse.bind(null, path.join(filePath, '/index.html'), gotHtmlPath, done));
+    function * tryHtml() {
+        var basePath = path.join(workRoot, req.url.replace(/\.html$/i, ''));
+        var filePath = yield firstExists([
+            basePath + '.html',
+            path.join(basePath, '/index.html')
+        ]);
+        if (!filePath) return;
 
-        function gotHtmlPath(filePath) {
-            res.log.filePath = filePath;
-            res.writeHead(200, {
-                'Content-Type': 'text/html; charset=utf-8'
-            });
-            if (req.noLayout) return responseNoLayout();
-            fse(path.join(workRoot, '_layout.html'), function (layoutFilePath) {
-                res.log.withLayout = true;
-                var tr = trumpet();
-                fs.createReadStream(layoutFilePath).pipe(tr);
-                fs.createReadStream(filePath).pipe(
-                    tr.select('div#main-container').createWriteStream());
-                tr.pipe(res);
-            }, responseNoLayout);
-
-            function responseNoLayout() {
-                fs.createReadStream(filePath).pipe(res);
-            }
+        res.log.filePath = filePath;
+        res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8'
+        });
+        var layoutFilePath = path.join(workRoot, '_layout.html');
+        if (req.noLayout || !(yield exists(layoutFilePath))) {
+            fs.createReadStream(filePath).pipe(res);
+            return;
         }
+        res.log.withLayout = true;
+        var tr = trumpet();
+        fs.createReadStream(layoutFilePath).pipe(tr);
+        fs.createReadStream(filePath).pipe(
+            tr.select('div#main-container').createWriteStream()
+        );
+        tr.pipe(res);
     }
 });
 
