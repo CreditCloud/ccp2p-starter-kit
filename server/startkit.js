@@ -69,13 +69,6 @@ function normalizeUrl(req) {
     req.url = req.url.replace(/\/+/g, '/').replace(/\?.*$/, '');
 }
 
-function fse(filePath, efn, nefn) {
-    fs.exists(filePath, function (exists) {
-        if (exists) efn(filePath);
-        else nefn();
-    });
-}
-
 function exists(filePath) {
     return new Promise(function (resolve) {
         fs.exists(filePath, resolve);
