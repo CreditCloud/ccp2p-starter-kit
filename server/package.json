@@ -1,6 +1,6 @@
 {
   "name": "ccsk",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "CreditCloud P2P Start Kit",
   "main": "server.js",
   "repository": {
@@ -25,7 +25,7 @@
     "url": "https://github.com/CreditCloud/ccp2p-starter-kit/issues"
   },
   "homepage": "https://github.com/CreditCloud/ccp2p-starter-kit",
-  "engines" : {
+  "engines": {
     "node": ">=0.10.0 <0.13",
     "iojs": "^1.0.0"
   },
