@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 'use strict';
 var http = require('http');
 var path = require('path');
@@ -159,7 +161,8 @@ var server = http.createServer(function (req, res) {
     function tryHtml() {
         var filePath = path.join(workRoot, req.url.replace(/\.html$/i, ''));
         fse(filePath + '.html', gotHtmlPath,
-            fse.bind(null, path.join(filePath, '/index.html'), gotHtmlPath, done));
+            fse.bind(null, path.join(filePath, '/index.html'), gotHtmlPath,
+                done));
 
         function gotHtmlPath(filePath) {
             res.log.filePath = filePath;
@@ -167,12 +170,14 @@ var server = http.createServer(function (req, res) {
                 'Content-Type': 'text/html; charset=utf-8'
             });
             if (req.noLayout) return responseNoLayout();
-            fse(path.join(workRoot, '_layout.html'), function (layoutFilePath) {
+            fse(path.join(workRoot, '_layout.html'), function (
+                layoutFilePath) {
                 res.log.withLayout = true;
                 var tr = trumpet();
                 fs.createReadStream(layoutFilePath).pipe(tr);
                 fs.createReadStream(filePath).pipe(
-                    tr.select('div#main-container').createWriteStream());
+                    tr.select('div#main-container').createWriteStream()
+                );
                 tr.pipe(res);
             }, responseNoLayout);
 

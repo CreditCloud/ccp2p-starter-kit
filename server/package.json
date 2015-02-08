@@ -1,4 +1,34 @@
 {
+  "name": "ccsk",
+  "version": "0.0.0",
+  "description": "CreditCloud P2P Start Kit",
+  "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CreditCloud/ccp2p-starter-kit"
+  },
+  "files": [
+    "startkit.js"
+  ],
+  "bin": {
+    "ccsk": "startkit.js"
+  },
+  "keywords": [
+    "static",
+    "server",
+    "prototype",
+    "starterkit"
+  ],
+  "author": "undoZen <opensource@undozen.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CreditCloud/ccp2p-starter-kit/issues"
+  },
+  "homepage": "https://github.com/CreditCloud/ccp2p-starter-kit",
+  "engines" : {
+    "node": ">=0.10.0 <0.13",
+    "iojs": "^1.0.0"
+  },
   "dependencies": {
     "errto": "~0.2.1",
     "finalhandler": "~0.3.3",
@@ -7,5 +37,6 @@
     "serve-static": "~1.8.1",
     "trumpet": "~1.7.0",
     "useragent": "~2.1.5"
-  }
+  },
+  "devDependencies": {}
 }
