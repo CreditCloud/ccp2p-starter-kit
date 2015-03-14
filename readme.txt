@@ -1,6 +1,8 @@
 CCP2P Starter Kit
 =================
 
+( 下载地址: http://pan.baidu.com/s/1dD4bqAt )
+
 这是用于开始 CreditCloud P2P 项目前端重构工作的静态文件服务器。
 
 开发时请遵循[《CreditCloud 代码风格指导》][cg]。
